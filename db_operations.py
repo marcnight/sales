@@ -24,16 +24,6 @@ def get_existing_data_from_db(conn):
         raise
     
 def validate_database(df, existing_data, conn):
-    """Valida os dados do DataFrame comparando com os dados existentes no banco de dados, e verificando se eles já estão no banco de dados"""
-    """
-    try:
-        with conn.cursor() as cursor:
-            cursor.execute(f"SELECT COUNT(*) FROM sales_data_with_dates")
-            count = cursor.fetchone()[0]
-            return count == 0
-    except Exception as e:
-        logger.error(f"Erro ao verificar a tabela sales_data_with_dates {e}")"""
-        
     # Filtra as linhas que não estão no banco de dados
     #if count != 0:
     merged_df = pd.merge(df, existing_data, on=['numero_nota', 'codigo_produto'], how='left', indicator=True)
@@ -60,30 +50,37 @@ def validate_database(df, existing_data, conn):
     
 def insert_data(df, cursor):
   # Insere os dados não duplicados no banco de dados.
-  for index, row in df.iterrows():
+  #df.to_excel('fetch.xlsx')
+  if df.empty:
+      logger.warning('Dados ja estao no banco, e nao serao inseridos novos dados no banco. ')
+
+  else:
+      
+      for index, row in df.iterrows():
         # Verifica se o registro já existe no banco de dados.
         cursor.execute("""
             SELECT 1 FROM sales_data_with_dates 
             WHERE numero_nota = %s AND codigo_produto = %s
         """, (row['numero_nota'], row['codigo_produto']))
   
-  try:
-    # Se o registro não existir, insere o df no banco de dados.
-    if cursor.fetchone() is None:
-        for index, row in df.iterrows():
-            cursor.execute("""
-             INSERT INTO sales_data_with_dates (data_venda, numero_nota, codigo_produto, descricao_produto, 
+      try:
+         # Se o registro não existir, insere o df no banco de dados.     
+         if cursor.fetchone() is None:
+             for index, row in df.iterrows():
+                 cursor.execute("""
+                INSERT INTO sales_data_with_dates (data_venda, numero_nota, codigo_produto, descricao_produto, 
                                     codigo_cliente, descricao_cliente, valor_unitario_produto, 
                                     quantidade_vendida_produto, valor_total, custo_da_venda, 
                                     valor_tabela_de_preco_do_produto)
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-             """, (row['data_venda'], row['numero_nota'], row['codigo_produto'], row['descricao_produto'],
+                """, (row['data_venda'], row['numero_nota'], row['codigo_produto'], row['descricao_produto'],
                 row['codigo_cliente'], row['descricao_cliente'], row['valor_unitario_produto'],
                 row['quantidade_vendida_produto'], row['valor_total'], row['custo_da_venda'],
                 row['valor_tabela_de_preco_do_produto']
               ))
-        logging.info(f'{len(df)} foram inseridos no banco com sucesso')
-    else:
-            logging.info(f"Foram encontrados {row['numero_nota']} registros existententes, que nao serao inseridos no banco.")
-  except Exception as e:
-        raise e 
+        
+             logging.info(f'{len(df)} foram inseridos no banco com sucesso') 
+         else:
+           logging.info(f"Foram encontrados {len(df)} registros existententes, que nao serao inseridos no banco.")
+      except Exception as e:
+         raise e 

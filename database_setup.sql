@@ -1,5 +1,5 @@
 CREATE TABLE sales_data_with_dates (
-    data_venda TEXT,
+    data_venda DATE,
     numero_nota BIGINT,
     codigo_produto TEXT,
     descricao_produto TEXT,
